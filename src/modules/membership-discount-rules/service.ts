@@ -28,6 +28,15 @@ function parseScope(value: string): Record<string, unknown> {
   }
 }
 
+async function tableExists(manager: EntityManager, tableName: string): Promise<boolean> {
+  const rows = (await manager.execute(
+    `SELECT to_regclass(?) as table_name`,
+    [tableName]
+  )) as Array<{ table_name: string | null }>
+
+  return Boolean(rows?.[0]?.table_name)
+}
+
 export default class MembershipDiscountRulesService extends MedusaService({
   MembershipDiscount,
   MembershipDiscountRule,
@@ -84,6 +93,11 @@ export default class MembershipDiscountRulesService extends MedusaService({
   async listDiscountDefinitions(@MedusaContext() ctx?: Context<EntityManager>) {
     if (!ctx?.manager) throw new Error("DB manager not available")
 
+    const discountTableReady = await tableExists(ctx.manager, "membership_discount")
+    if (!discountTableReady) {
+      return []
+    }
+
     const discounts = (await ctx.manager.execute(
       `SELECT id, name, membership_product_id, active, created_at, updated_at
        FROM membership_discount
@@ -99,6 +113,11 @@ export default class MembershipDiscountRulesService extends MedusaService({
     @MedusaContext() ctx?: Context<EntityManager>
   ) {
     if (!ctx?.manager) throw new Error("DB manager not available")
+
+    const discountTableReady = await tableExists(ctx.manager, "membership_discount")
+    if (!discountTableReady) {
+      throw new Error("membership discount tables are not migrated")
+    }
 
     const discountRows = (await ctx.manager.execute(
       `SELECT id, name, membership_product_id, active, created_at, updated_at
