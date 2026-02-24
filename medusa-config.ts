@@ -40,5 +40,8 @@ export default defineConfig({
     {
       resolve: "./src/modules/membership-entitlement",
     },
+    {
+      resolve: "./src/modules/membership-discount-rules",
+    },
   ],
 })
