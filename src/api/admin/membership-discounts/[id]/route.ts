@@ -23,9 +23,9 @@ export const PUT = async (
   req: MedusaRequest<CreateMembershipDiscountInput>,
   res: MedusaResponse
 ) => {
-  // Contract stub: keeping this explicit for implementation teams.
-  // In production, replace existing rules transactionally and preserve IDs as needed.
-  res.status(501).json({
-    error: "Not implemented. Replace discount definition transactionally with ordered rules.",
-  })
+  const svc = req.scope.resolve(MEMBERSHIP_DISCOUNT_RULES_MODULE) as MembershipDiscountRulesService
+  const { id } = req.params
+  const row = await svc.updateDiscountDefinition(id, req.body)
+
+  res.json({ membership_discount: row })
 }

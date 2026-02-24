@@ -90,6 +90,73 @@ export default class MembershipDiscountRulesService extends MedusaService({
   }
 
   @InjectManager()
+  async updateDiscountDefinition(
+    id: string,
+    input: CreateMembershipDiscountInput,
+    @MedusaContext() ctx?: Context<EntityManager>
+  ) {
+    if (!ctx?.manager) throw new Error("DB manager not available")
+
+    assertRequired(id, "id")
+    assertRequired(input.name, "name")
+    assertRequired(input.membership_product_id, "membership_product_id")
+
+    return ctx.manager.transactional(async (m) => {
+      const discountTableReady = await tableExists(m, "membership_discount")
+      if (!discountTableReady) {
+        throw new Error("membership discount tables are not migrated")
+      }
+
+      const existing = (await m.execute(
+        `SELECT id FROM membership_discount WHERE id = ?`,
+        [id]
+      )) as Array<{ id: string }>
+
+      if (!existing[0]) {
+        throw new Error("membership discount not found")
+      }
+
+      await m.execute(
+        `UPDATE membership_discount
+         SET name = ?, membership_product_id = ?, active = ?, updated_at = NOW()
+         WHERE id = ?`,
+        [input.name, input.membership_product_id, input.active ?? true, id]
+      )
+
+      await m.execute(
+        `DELETE FROM membership_discount_rule
+         WHERE membership_discount_id = ?`,
+        [id]
+      )
+
+      const rules = [...(input.rules ?? [])].sort((a, b) => a.order_index - b.order_index)
+
+      for (const rule of rules) {
+        const ruleId = randomUUID()
+        await m.execute(
+          `INSERT INTO membership_discount_rule
+           (id, membership_discount_id, name, order_index, discount_type, discount_value, applies_to_json, limit_count, period, active, created_at, updated_at)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW())`,
+          [
+            ruleId,
+            id,
+            rule.name,
+            rule.order_index,
+            rule.discount_type,
+            rule.discount_value,
+            JSON.stringify(rule.applies_to ?? {}),
+            rule.limit_count,
+            rule.period,
+            rule.active ?? true,
+          ]
+        )
+      }
+
+      return this.getDiscountDefinition(id, { manager: m })
+    })
+  }
+
+  @InjectManager()
   async listDiscountDefinitions(@MedusaContext() ctx?: Context<EntityManager>) {
     if (!ctx?.manager) throw new Error("DB manager not available")
 
