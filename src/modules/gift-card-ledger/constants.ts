@@ -1,0 +1,1 @@
+export const GIFT_CARD_LEDGER_MODULE = "giftCardLedger"
