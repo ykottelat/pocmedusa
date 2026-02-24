@@ -37,5 +37,11 @@ export default defineConfig({
     {
       resolve: "./src/modules/gift-card-ledger",
     },
+    {
+      resolve: "./src/modules/membership-entitlement",
+    },
+    {
+      resolve: "./src/modules/membership-discount-rules",
+    },
   ],
 })
